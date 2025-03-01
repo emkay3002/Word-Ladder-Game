@@ -2,6 +2,9 @@ import heapq
 import random
 from collections import deque, defaultdict
 import requests
+import time
+import threading
+import os
 
 
 # Function to fetch the definition of a word from Free Dictionary API
@@ -192,7 +195,7 @@ def ai_assisted_play(start, end, dictionary):
         print("\n🎉 Congratulations! You reached the final word successfully!")
         print(f"🔗 Path followed: {' → '.join(user_path)}")
     else:
-        print("⚠️ No valid path found between the words.")
+        print("⚠ No valid path found between the words.")
 
 def select_game_mode():
     print("Select Game Mode:")
@@ -222,10 +225,29 @@ def select_play_mode():
         except ValueError:
             print("Invalid input. Enter a number.")
 
+
+def enforce_time_limit(game_func, *args, time_limit):
+    """Runs the game function with a time constraint."""
+    def wrapper():
+        game_func(*args)  # Call the function with its arguments
+
+    game_thread = threading.Thread(target=wrapper)
+    game_thread.start()
+
+    game_thread.join(timeout=time_limit)
+
+    if game_thread.is_alive():
+        print("\n⏳ Time's up! You ran out of time.")
+        print("❌ Challenge Mode failed! Better luck next time.")
+        #exit()  # Force exit, this didn't work eman
+        os._exit(0)
+
+
 def play_game(dictionary):
+    boolChallenge=False
     # Step 1: Select Game Mode
     mode = select_game_mode()
-
+    
     # Step 2: Select Play Mode
     play_mode = select_play_mode()
 
@@ -235,8 +257,17 @@ def play_game(dictionary):
     elif mode == 2:
         start, end = "stone", "money"
     else:
+        boolChallenge=True
         start = input("Enter the start word: ").strip().lower()
         end = input("Enter the end word: ").strip().lower()
+        print("\n⚠ Challenge Mode Activated! Additional Obstacles Applied.")
+
+        # Random Time Limit (between 30 to 60 seconds)
+        time_limit = random.randint(30, 60)
+        print(f"⏳ You must complete the challenge within {time_limit} seconds!")
+
+        # Step 4: Timer Setup
+        start_time = time.time()
 
     word_list = {word for word in dictionary if len(word) == len(start)}
 
@@ -258,7 +289,11 @@ def play_game(dictionary):
                 algo_choice = int(input("Enter choice (1/2/3): "))
                 if algo_choice in [1, 2, 3]:
                     search_algo = bfs if algo_choice == 1 else ucs if algo_choice == 2 else a_star
-                    manual_gameplay(start, end, graph, search_algo)
+                    if boolChallenge == True:
+                        enforce_time_limit(manual_gameplay, start, end, graph, search_algo, time_limit=time_limit)
+
+                    else:
+                        manual_gameplay(start, end, graph, search_algo)  # Regular mode
                     return
                 print("Invalid choice. Enter 1, 2, or 3.")
             except ValueError:
@@ -266,7 +301,10 @@ def play_game(dictionary):
 
     # Step 5: AI-Assisted Mode
     else:
-        ai_assisted_play(start, end, dictionary)
+        if boolChallenge == True:
+            enforce_time_limit(ai_assisted_play, start, end, dictionary, time_limit=time_limit)
+        else:
+            ai_assisted_play(start, end, dictionary)
 
 # Run the game
 if __name__ == "__main__":
