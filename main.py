@@ -5,6 +5,42 @@ import requests
 import time
 import threading
 import os
+import networkx as nx
+import matplotlib.pyplot as plt
+
+def visualize_graph(graph, path=None, filename="word_graph.png", degree_threshold=3):
+    """Visualizes the word transformation graph with filtering for clarity."""
+    G = nx.Graph()
+
+    # Add edges
+    for word, neighbors in graph.items():
+        for neighbor in neighbors:
+            G.add_edge(word, neighbor)
+
+    # Filter nodes with degree above threshold
+    higher_nodes = [node for node, deg in G.degree() if deg > degree_threshold]
+    G_sub = G.subgraph(higher_nodes)
+
+    # Adjust layout for better spacing
+    plt.figure(figsize=(12, 12))
+    pos = nx.spring_layout(G_sub, k=0.6)  # Increase k to spread nodes apart
+
+    # Reduce label clutter (show only important nodes)
+    labels = {node: node if node in path else "" for node in G_sub.nodes}
+
+    # Draw graph
+    nx.draw(G_sub, pos, with_labels=True, node_color="lightblue", edge_color="gray",
+            font_size=8, node_size=100)
+    nx.draw_networkx_labels(G_sub, pos, labels, font_size=6)
+
+    # Highlight the path if provided
+    if path:
+        path_edges = list(zip(path, path[1:]))
+        nx.draw_networkx_edges(G_sub, pos, edgelist=path_edges, edge_color="red", width=2)
+
+    plt.title(f"Filtered Word Transformation Graph (Degree > {degree_threshold})")
+    plt.savefig(filename)
+    plt.show()
 
 
 # Function to fetch the definition of a word from Free Dictionary API
@@ -123,7 +159,7 @@ def load_words(filename="dictionary.txt"):
 def save_score(name, score):
     with open("scores.txt", "a") as file:
         file.write(f"{name}: {score}\n")
-    print(f"🏆 Score saved! {name}, you earned {score} points.")
+    print(f"🏆 {name}, you earned {score} points.")
 
 def manual_gameplay(start, end, graph, search_algo):
     path = search_algo(start, end, graph)  # Compute the best path
@@ -164,6 +200,8 @@ def manual_gameplay(start, end, graph, search_algo):
     # Save the score
     
     save_score(name, score)
+    visualize_graph(graph, path)
+
 
 # AI-Assisted Hint System
 def ai_assisted_play(start, end, dictionary):
@@ -174,6 +212,7 @@ def ai_assisted_play(start, end, dictionary):
 
     graph = build_graph(word_list)
     path = a_star(start, end, graph)  # Using A* for optimal hints
+
 
     if path:
         print(f"\n🔹 AI Hint System Active! Transform '{start}' → '{end}'. You have 3 total incorrect attempts.")
@@ -212,7 +251,9 @@ def ai_assisted_play(start, end, dictionary):
 
         # Save the score
         
-        save_score(name, score)  
+        save_score(name, score)
+        visualize_graph(graph, path)
+  
     else:
         print("⚠ No valid path found between the words.")
 
@@ -319,6 +360,7 @@ def play_game(dictionary):
 
                     else:
                         manual_gameplay(start, end, graph, search_algo)  # Regular mode
+                        
                     return
                 print("Invalid choice. Enter 1, 2, or 3.")
             except ValueError:
@@ -330,6 +372,7 @@ def play_game(dictionary):
             enforce_time_limit(ai_assisted_play, start, end, dictionary, time_limit=time_limit)
         else:
             ai_assisted_play(start, end, dictionary)
+            
 
 # Run the game
 if __name__ == "__main__":
