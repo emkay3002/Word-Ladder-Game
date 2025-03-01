@@ -119,11 +119,14 @@ def load_words(filename="dictionary.txt"):
 
 
 
+# Function to save the player's score
+def save_score(name, score):
+    with open("scores.txt", "a") as file:
+        file.write(f"{name}: {score}\n")
+    print(f"🏆 Score saved! {name}, you earned {score} points.")
 
 def manual_gameplay(start, end, graph, search_algo):
-
     path = search_algo(start, end, graph)  # Compute the best path
-
 
     print(f"\n🔹 You must transform '{start}' → '{end}'. Guess each word in the path!")
     print("You have 3 incorrect attempts for the entire game.")
@@ -131,6 +134,8 @@ def manual_gameplay(start, end, graph, search_algo):
     attempts = 3
     current_word = start
     user_path = [current_word]
+    score = 0  # Initialize score
+    name = input("Enter your name: ")
 
     for next_word in path[1:]:  # Start from the second word in the path
         while True:
@@ -140,17 +145,25 @@ def manual_gameplay(start, end, graph, search_algo):
                 print("✅ Correct! Moving to the next word...")
                 user_path.append(user_guess)
                 current_word = user_guess
+                score += 10  # Award points for correct guess
                 break  # Move to the next word in the path
             else:
                 attempts -= 1
-                print(f"❌ Incorrect! ({attempts} attempts left)")
+                score -= 5  # Deduct points for incorrect guess
+                print(f"❌ Incorrect! (-5 points) ({attempts} attempts left)")
 
                 if attempts == 0:
                     print(f"❌ Out of attempts! The correct path was: {' -> '.join(path)}")
+                    print(f"🏆 Final Score: {score} points")
                     return  # Ends the game immediately
 
     print("\n🎉 Congratulations! You reached the final word successfully!")
     print(f"🔗 Path followed: {' -> '.join(user_path)}")
+    print(f"🏆 Final Score: {score} points")  # Show score
+
+    # Save the score
+    
+    save_score(name, score)
 
 # AI-Assisted Hint System
 def ai_assisted_play(start, end, dictionary):
@@ -164,36 +177,42 @@ def ai_assisted_play(start, end, dictionary):
 
     if path:
         print(f"\n🔹 AI Hint System Active! Transform '{start}' → '{end}'. You have 3 total incorrect attempts.")
+        attempts = 3  
+        user_path = [start]  
+        score = 0  # Initialize score
+        name = input("Enter your name: ")
 
-        attempts = 3  # Only 3 incorrect attempts for the whole game
-        user_path = [start]  # Track the path the user follows
-
-
-        for i in range(1, len(path)):  # Loop through intermediate words
+        for i in range(1, len(path)):  
             next_word = path[i]
             definition = get_word_definition(next_word)
-            #debug statement
-            print(f"Debug: AI-generated path -> {path}")
 
             print(f"\nHint {i}: The next word has this meaning → {definition}")
 
-            while True:  # Ensure user stays on the same word until they get it right or fail
+            while True:  
                 user_input = input(f"🔹 Guess the word (Incorrect attempts left: {attempts}): ").strip().lower()
 
                 if user_input == next_word:
                     print("✅ Correct! Moving to the next word...")
-                    user_path.append(user_input)  # Store correct guesses
-                    break  # Move to the next hint
+                    user_path.append(user_input)  
+                    score += 10  
+                    break  
                 else:
                     attempts -= 1
-                    print(f"❌ Incorrect! ({attempts} attempts left)")
+                    score -= 5  
+                    print(f"❌ Incorrect! (-5 points) ({attempts} attempts left)")
 
                     if attempts == 0:
                         print(f"❌ Out of attempts! The correct word was '{next_word}'. Game over.")
-                        return  # Ends the game immediately
+                        print(f"🏆 Final Score: {score} points")
+                        return  
 
         print("\n🎉 Congratulations! You reached the final word successfully!")
         print(f"🔗 Path followed: {' → '.join(user_path)}")
+        print(f"🏆 Final Score: {score} points")
+
+        # Save the score
+        
+        save_score(name, score)  
     else:
         print("⚠ No valid path found between the words.")
 
@@ -268,6 +287,12 @@ def play_game(dictionary):
 
         # Step 4: Timer Setup
         start_time = time.time()
+
+        time_taken = time.time() - start_time
+        bonus = max(0, 50 - int(time_taken))  # Faster completion gives higher bonus
+        score += bonus
+        print(f"⏳ Time Bonus: {bonus} points!")
+
 
     word_list = {word for word in dictionary if len(word) == len(start)}
 
